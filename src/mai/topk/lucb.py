@@ -15,13 +15,13 @@ class LUCB:
         self.delta = delta
         self.batch_size = batch_size
 
-    def confidence_bound(self, u: np.ndarray, t: float):
+    def _compute_beta(self, u: np.ndarray, t: float):
         k1 = 5 / 4
         return np.sqrt(1/(2 * u) * np.log(k1 * self.n * t**4 / self.delta))
 
     def _step(self, mu: np.ndarray, u: np.ndarray, t: float) -> Dict[str, Any]:
         # compute upper and lower confidence bounds
-        beta = self.confidence_bound(u, t)
+        beta = self._compute_beta(u, t)
 
         # select the set of m arms with the highest and lowest empirical averages
         partition = np.argpartition(mu, -self.m)
@@ -32,7 +32,7 @@ class LUCB:
         h = high[np.argmin(mu[high] - beta[high])]
 
         # from the low arms, select the arm with the highest confidence bound
-        l = low[np.argmax(mu[low] - beta[low])]
+        l = low[np.argmax(mu[low] + beta[low])]
 
         # compute difference between the upper bound of l and the lower bound of h
         return {
@@ -44,8 +44,11 @@ class LUCB:
         }
 
     def play(self):
-        mu = np.array([np.mean(arm(self.batch_size)) for arm in self.arms])  # average reward for each arm
-        u = np.ones_like(mu)  # number of times each arm has been sampled
+        # average reward for each arm
+        mu = np.array([np.mean(arm(self.batch_size)) for arm in tqdm(self.arms, desc='first iteration')])
+        # number of times each arm has been sampled
+        u = np.full(mu.shape, self.batch_size)
+        # time step
         t = self.batch_size
 
         res = self._step(mu, u, t)
