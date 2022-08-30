@@ -100,4 +100,5 @@ class Shap:
         instance2 = masks2 * self.X + (1 - masks2) * baseline
 
         diff = self.predictor(instance2) - self.predictor(instance1)
+        diff = diff.reshape(n_samples, -1)
         return np.clip((diff - self.min_val) / (self.max_val - self.min_val), 0, 1)
